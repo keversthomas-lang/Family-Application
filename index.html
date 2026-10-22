@@ -336,7 +336,37 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
   function navigateMonth(delta){monthDate=new Date(monthDate.getFullYear(),monthDate.getMonth()+delta,1);renderMonth();const days=monthCard.querySelector('.days');days.classList.remove('month-changing-next','month-changing-prev');void days.offsetWidth;days.classList.add(delta>0?'month-changing-next':'month-changing-prev');}
   monthCard.querySelectorAll('.arrows button').forEach((b,i)=>b.addEventListener('click',()=>navigateMonth(i?1:-1)));
   let monthTouchStart=null,monthSwipeHandled=false;monthCard.addEventListener('touchstart',event=>{if(event.target.closest('button')){monthTouchStart=null;return;}const touch=event.changedTouches[0];monthTouchStart={x:touch.clientX,y:touch.clientY};},{passive:true});monthCard.addEventListener('touchend',event=>{if(!monthTouchStart)return;const touch=event.changedTouches[0],dx=touch.clientX-monthTouchStart.x,dy=touch.clientY-monthTouchStart.y;monthTouchStart=null;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.35){monthSwipeHandled=true;navigateMonth(dx<0?1:-1);window.setTimeout(()=>{monthSwipeHandled=false;},400);}},{passive:true});monthCard.addEventListener('click',event=>{if(monthSwipeHandled){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
-  const viewButtons=[...document.querySelectorAll('.nav button')].slice(0,2);viewButtons.forEach((button,i)=>button.addEventListener('click',()=>{viewButtons.forEach(item=>item.classList.remove('active'));button.classList.add('active');const heading=document.querySelector('.heading');if(i===0){document.body.classList.remove('month-view-active');if(heading)heading.textContent='Bonjour Familie Kevers';showToday();window.scrollTo({top:0,behavior:'smooth'});}else{document.body.classList.remove('day-view-active');document.body.classList.add('month-view-active');if(heading)heading.textContent='Kalender';dayView.classList.remove('visible');agendaCard.style.display='none';monthCard.style.display='block';renderMonth();}}));
+  const viewButtons=[...document.querySelectorAll('.nav button')].slice(0,2);
+  const clearMobileMonthPosition=()=>['position','top','right','bottom','left','height','width','overflow','z-index'].forEach(property=>monthCard.style.removeProperty(property));
+  function activateCalendarView(){
+    document.body.classList.remove('day-view-active');
+    document.body.classList.add('month-view-active');
+    dayView.classList.remove('visible');
+    agendaCard.style.display='none';
+    monthCard.hidden=false;
+    monthCard.style.setProperty('display','block','important');
+    const heading=document.querySelector('.heading');if(heading)heading.textContent='Kalender';
+    if(window.matchMedia('(max-width:600px)').matches){
+      monthCard.style.setProperty('position','fixed','important');
+      monthCard.style.setProperty('top','58px','important');
+      monthCard.style.setProperty('right','0','important');
+      monthCard.style.setProperty('bottom','58px','important');
+      monthCard.style.setProperty('left','0','important');
+      monthCard.style.setProperty('width','auto','important');
+      monthCard.style.setProperty('height','auto','important');
+      monthCard.style.setProperty('min-height','0','important');
+      monthCard.style.setProperty('overflow','auto','important');
+      monthCard.style.setProperty('z-index','6','important');
+    }
+    renderMonth();
+  }
+  viewButtons.forEach((button,index)=>button.addEventListener('click',event=>{
+    event.preventDefault();
+    viewButtons.forEach(item=>item.classList.remove('active'));
+    button.classList.add('active');
+    if(index===0){clearMobileMonthPosition();document.body.classList.remove('month-view-active');const heading=document.querySelector('.heading');if(heading)heading.textContent='Bonjour Familie Kevers';showToday();window.scrollTo({top:0,behavior:'smooth'});}
+    else activateCalendarView();
+  }));
   document.getElementById('open').addEventListener('click',()=>{prepareNew();modal.classList.add('open');});
   document.getElementById('mobileAdd').addEventListener('click',()=>document.getElementById('open').click());
   modal.querySelector('.modal-close').addEventListener('click',()=>{modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');editingId=null;deleteConfirm.hidden=true;});
