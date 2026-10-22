@@ -1,0 +1,2 @@
+[functions.family-voice-event]
+verify_jwt = false
