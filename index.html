@@ -349,14 +349,14 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
   monthCard.querySelectorAll('.arrows button').forEach((b,i)=>b.addEventListener('click',()=>navigateMonth(i?1:-1)));
   let monthTouchStart=null,monthSwipeHandled=false;monthCard.addEventListener('touchstart',event=>{if(event.target.closest('button')){monthTouchStart=null;return;}const touch=event.changedTouches[0];monthTouchStart={x:touch.clientX,y:touch.clientY};},{passive:true});monthCard.addEventListener('touchend',event=>{if(!monthTouchStart)return;const touch=event.changedTouches[0],dx=touch.clientX-monthTouchStart.x,dy=touch.clientY-monthTouchStart.y;monthTouchStart=null;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.35){monthSwipeHandled=true;navigateMonth(dx<0?1:-1);window.setTimeout(()=>{monthSwipeHandled=false;},400);}},{passive:true});monthCard.addEventListener('click',event=>{if(monthSwipeHandled){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
   const viewButtons=[...document.querySelectorAll('.nav button')].slice(0,2);
-  const clearMobileMonthPosition=()=>['position','top','right','bottom','left','height','width','overflow','z-index'].forEach(property=>monthCard.style.removeProperty(property));
+  const clearMobileMonthPosition=()=>['display','position','top','right','bottom','left','height','width','overflow','z-index'].forEach(property=>monthCard.style.removeProperty(property));
   function activateCalendarView(){
     document.body.classList.remove('day-view-active');
     document.body.classList.add('month-view-active');
     dayView.classList.remove('visible');
     agendaCard.style.display='none';
     monthCard.hidden=false;
-    monthCard.style.setProperty('display','block','important');
+    monthCard.style.setProperty('display',window.matchMedia('(max-width:600px)').matches?'flex':'block','important');
     const heading=document.querySelector('.heading');if(heading)heading.textContent='Kalender';
     renderMonth();
   }
