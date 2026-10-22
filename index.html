@@ -95,7 +95,7 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
   if(!urlParams.has('share')){urlParams.set('share',sharedToken);history.replaceState(null,'',`${location.pathname}?${urlParams.toString()}${location.hash}`);}
   function readEvents(){if(Array.isArray(eventsCache))return eventsCache;try{const list=JSON.parse(localStorage.getItem('notre-events')||'[]');let changed=false;list.forEach(e=>{if(!e.id){e.id=`event-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;changed=true;}});if(changed)localStorage.setItem('notre-events',JSON.stringify(list));return list;}catch{return [];}}
   function localDateTime(value){if(!value)return '';const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value).slice(0,16);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
-  function localInputToISO(value){const match=String(value||'').match(/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})$/);if(!match)return '';const [,y,m,d,h,min]=match.map(Number);return new Date(y,m-1,d,h,min,0,0).toISOString();}
+  function localInputToISO(value){const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);if(!match)return '';const [,y,m,d,h,min]=match.map(Number);return new Date(y,m-1,d,h,min,0,0).toISOString();}
   async function refreshRemoteEvents(){const {data,error}=await supabaseClient.rpc('shared_calendar_read',{p_token:sharedToken});if(error)throw error;eventsCache=(data?.events||[]).map(e=>({...e,start:localDateTime(e.start),date:localDateTime(e.start),end:localDateTime(e.end)}));}
   async function initializeSharedCalendar(){
     try{
