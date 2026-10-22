@@ -106,6 +106,36 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
       console.error('Supabase shared calendar:',error);
     }
   }
+  async function migrateLegacyLocalEvents(){
+    const migrationKey=`notre-local-events-migrated-v1:${sharedToken}`;
+    if(localStorage.getItem(migrationKey))return;
+    let legacy=[];
+    try{legacy=JSON.parse(localStorage.getItem('notre-events')||'[]');}catch{throw new Error('Les anciens rendez-vous locaux ne peuvent pas être lus.');}
+    if(!Array.isArray(legacy))throw new Error('Le format des anciens rendez-vous locaux est invalide.');
+    try{const last=JSON.parse(localStorage.getItem('notre-last-event')||'null');if(last&&typeof last==='object'){const lastStart=last.start||last.date||'';const exists=legacy.some(event=>(event.title||'').trim()===(last.title||'').trim()&&(event.start||event.date||'')===lastStart);if(!exists)legacy.push(last);}}catch{}
+    if(!legacy.length){localStorage.setItem(migrationKey,'done');return;}
+    const signature=event=>[String(event.title||'').trim().toLocaleLowerCase(),String(event.person||'Alle').trim(),String(event.start||event.date||'').slice(0,16),String(event.place||'').trim().toLocaleLowerCase()].join('|');
+    const known=new Set((eventsCache||[]).map(signature));
+    for(const oldEvent of legacy){
+      const title=String(oldEvent.title||'').trim();
+      const rawStart=oldEvent.start||oldEvent.date||oldEvent.startAt;
+      const startDate=new Date(rawStart);
+      if(!title||!rawStart||Number.isNaN(startDate.getTime()))throw new Error('Un ancien rendez-vous contient un titre ou une date invalide ; il a été conservé sur cet appareil.');
+      const start=localDateTime(startDate.toISOString());
+      const rawEnd=oldEvent.end||oldEvent.endAt;
+      const endDate=rawEnd?new Date(rawEnd):new Date(startDate.getTime()+60*60*1000);
+      if(Number.isNaN(endDate.getTime())||endDate<=startDate)throw new Error(`La fin de « ${title} » est invalide ; le rendez-vous a été conservé sur cet appareil.`);
+      const person=['Alle','Thomas','Minyao','Noe','Mia'].includes(oldEvent.person)?oldEvent.person:'Alle';
+      const item={title,person,start,place:String(oldEvent.place||'').trim()};
+      const key=signature(item);
+      if(known.has(key))continue;
+      const {error}=await supabaseClient.rpc('shared_calendar_save',{p_token:sharedToken,p_event_id:null,p_title:item.title,p_person:item.person,p_start:startDate.toISOString(),p_end:endDate.toISOString(),p_location:item.place,p_recurrence:oldEvent.recurrence||'Keine Wiederholung'});
+      if(error)throw error;
+      known.add(key);
+    }
+    await refreshRemoteEvents();
+    localStorage.setItem(migrationKey,'done');
+  }
   const getStart=e=>e.start||e.date||'';
   const eventDay=e=>getStart(e).slice(0,10);
   const timeOf=v=>String(v||'').slice(11,16);
@@ -148,7 +178,7 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
   document.getElementById('mobileAdd').addEventListener('click',()=>document.getElementById('open').click());
   modal.querySelector('.modal-close').addEventListener('click',()=>{modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');editingId=null;deleteConfirm.hidden=true;});
   saveButton.addEventListener('click',async e=>{e.preventDefault();e.stopImmediatePropagation();if(!titleInput.value.trim()){titleInput.focus();return;}if(!dateInput.value){dateInput.focus();return;}syncTimeConstraints();const start=`${dateInput.value}T${startTimeInput.value||'09:00'}`,end=`${endInput.value}T${endTimeInput.value||''}`;if(endInput.value<dateInput.value||(endInput.value===dateInput.value&&endTimeInput.value<=startTimeInput.value)){endInput.focus();return;}const item={id:editingId,title:titleInput.value.trim(),person:personSelect.value,start,end,date:start,place:placeInput.value.trim(),recurrence:recurrenceInput.value};const button=saveButton;button.disabled=true;button.textContent='Speichern …';try{const {data,error}=await supabaseClient.rpc('shared_calendar_save',{p_token:sharedToken,p_event_id:editingId||null,p_title:item.title,p_person:item.person,p_start:new Date(start).toISOString(),p_end:new Date(end).toISOString(),p_location:item.place,p_recurrence:item.recurrence});if(error)throw error;item.id=data;await refreshRemoteEvents();signalCalendarUpdate();updateSyncStatus();selectedDay=eventDay(item);monthDate=new Date(Number(selectedDay.slice(0,4)),Number(selectedDay.slice(5,7))-1,1);editingId=null;modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');renderMonth();renderAgenda();showDay();}catch(error){connection.textContent=`Enregistrement impossible : ${error.message}`;connection.style.display='block';connection.style.color='#aa765c';console.error('Supabase save:',error);}finally{button.disabled=false;button.textContent=editingId?'Speichern':'Hinzufügen';}},true);
-  document.querySelectorAll('.agenda-item,.event').forEach(el=>el.remove());monthCard.querySelector('.cal-head > .link')?.remove();Array.from(agendaCard.children).filter(el=>!el.classList.contains('card-head')).forEach(el=>el.remove());document.querySelector('.eyebrow').textContent=dateLabel(selectedDay);setFormDateTime(`${selectedDay}T18:00`,`${selectedDay}T19:00`);await initializeSharedCalendar();renderMonth();renderAgenda();showDay();
+  document.querySelectorAll('.agenda-item,.event').forEach(el=>el.remove());monthCard.querySelector('.cal-head > .link')?.remove();Array.from(agendaCard.children).filter(el=>!el.classList.contains('card-head')).forEach(el=>el.remove());document.querySelector('.eyebrow').textContent=dateLabel(selectedDay);setFormDateTime(`${selectedDay}T18:00`,`${selectedDay}T19:00`);await initializeSharedCalendar();try{await migrateLegacyLocalEvents();}catch(error){connection.textContent=`Récupération des anciens rendez-vous impossible : ${error.message}`;connection.style.display='block';connection.style.color='#aa765c';console.error('Legacy event migration:',error);}renderMonth();renderAgenda();showDay();
   let backgroundSyncRunning=false;
   async function syncSharedCalendar(){
     if(backgroundSyncRunning||document.visibilityState!=='visible'||modal.classList.contains('open'))return;
