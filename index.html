@@ -150,10 +150,19 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
   async function syncSharedCalendar(){
     if(backgroundSyncRunning||document.visibilityState!=='visible'||modal.classList.contains('open'))return;
     backgroundSyncRunning=true;
-    const previous=JSON.stringify(eventsCache||[]);
+    const previousById=new Map((eventsCache||[]).map(event=>[event.id,JSON.stringify(event)]));
     try{
       await refreshRemoteEvents();
-      if(JSON.stringify(eventsCache)!==previous){renderMonth();renderAgenda();renderDay();}
+      const changedEvents=eventsCache.filter(event=>previousById.get(event.id)!==JSON.stringify(event));
+      if(changedEvents.length){
+        const latestChanged=changedEvents.sort((a,b)=>String(getStart(b)).localeCompare(String(getStart(a))))[0];
+        selectedDay=eventDay(latestChanged);
+        monthDate=new Date(Number(selectedDay.slice(0,4)),Number(selectedDay.slice(5,7))-1,1);
+        document.querySelector('.eyebrow').textContent=dateLabel(selectedDay);
+        renderMonth();renderAgenda();renderDay();
+      }else if((eventsCache||[]).length!==(previousById.size)){
+        renderMonth();renderAgenda();renderDay();
+      }
       connection.textContent=`Supabase synchronisé · ${eventsCache.length} rendez-vous`;
       connection.style.color='#5e806b';
     }catch(error){
