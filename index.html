@@ -38,6 +38,25 @@
 @media(max-width:600px){.weather-actions{display:flex;align-items:center;gap:6px;width:100%}.weather-actions .weather-widget{flex:1;min-width:0}.weather-actions .weather-copy{min-width:0}.weather-actions .weather-copy span{white-space:normal;line-height:1.15}.weather-actions .google-connect-mobile{flex:0 0 132px;min-height:40px;padding:6px 8px;white-space:normal;text-align:center;line-height:1.15}}
 
 @media(max-width:600px){.day-view{width:100%;min-width:0;max-width:100%;overflow-x:clip}.day-view-head{min-width:0;max-width:100%}.day-timeline{min-width:0;max-width:100%;overflow-x:visible}.day-event{box-sizing:border-box;max-width:calc(100% - 6px);overflow-wrap:anywhere;word-break:break-word}.day-event strong,.day-event>div{max-width:100%;overflow-wrap:anywhere;word-break:break-word}}
+
+/* Mobile layout fixes: keep the header and daily agenda inside the viewport. */
+@media(max-width:600px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  .main,.top,.top>div,.greeting-row,.weather-actions,.grid{width:100%;min-width:0;max-width:100%}
+  .top>div{flex:1 1 100%}
+  .heading{max-width:100%;overflow-wrap:anywhere}
+  .weather-actions{gap:6px}
+  .weather-actions .weather-widget{flex:1 1 auto;width:auto;min-width:0}
+  .weather-actions .google-connect-mobile{flex:0 1 122px;min-width:0;min-height:40px;padding:6px 7px;font-size:11px;line-height:1.15;white-space:normal}
+  .weather-actions .weather-copy span{overflow-wrap:anywhere}
+  body.month-view-active .main{padding-bottom:calc(58px + env(safe-area-inset-bottom))}
+  body.month-view-active .mobile-add{right:12px;bottom:calc(8px + env(safe-area-inset-bottom));min-height:46px;padding:0 15px}
+  #dayView.day-view{width:100%;min-width:0;max-width:100%;margin:0;overflow-x:clip}
+  #dayView .day-view-head{width:100%;min-width:0;max-width:100%}
+  #dayView .day-timeline{width:auto;min-width:0;max-width:100%;margin-left:48px;overflow-x:visible}
+  #dayView .day-event{left:4px;right:4px;width:auto;max-width:calc(100% - 8px);box-sizing:border-box;overflow-wrap:anywhere;word-break:break-word}
+  #dayView .day-event strong,#dayView .day-event>div{max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+}
 </style>
 </head>
 <body>
