@@ -132,6 +132,18 @@
 .weather-actions{position:relative}.weather-widget{cursor:pointer}.weather-widget:focus-visible{outline:2px solid #5b8b6b;outline-offset:2px}.weather-forecast{position:absolute;z-index:9;left:0;top:calc(100% + 8px);width:min(360px,calc(100vw - 32px));padding:8px 13px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 12px 32px rgba(39,55,49,.16)}.weather-forecast[hidden]{display:none}.weather-forecast-day{display:grid;grid-template-columns:48px 26px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:38px;border-bottom:1px solid var(--line);font-size:12px}.weather-forecast-day:last-child{border-bottom:0}.weather-forecast-date,.weather-forecast-label{color:#64736e}.weather-forecast-icon{font-size:17px}.weather-forecast-temperatures{font-size:11px;color:var(--ink);white-space:nowrap}
 @media(min-width:601px){.weather-actions{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}.weather-forecast{position:static;left:auto;top:auto;width:min(430px,100%);flex:1 1 100%;margin-top:2px}.weather-widget{max-width:max-content}}
 @media(max-width:600px){.nav button{justify-content:center}.nav i,.nav-add i{display:none!important}body.month-view-active{overflow-x:hidden;overflow-y:auto}body.month-view-active .main{height:auto;min-height:calc(100dvh - 58px);display:block;padding:10px 10px calc(60px + env(safe-area-inset-bottom))}body.month-view-active .top{display:none!important}body.month-view-active .grid{display:block!important;min-height:calc(100dvh - 72px);overflow:visible}body.month-view-active .calendar{display:block!important;width:100%;height:calc(100dvh - 94px);min-height:520px;overflow:auto;padding:12px 10px}body.month-view-active .cal-head{display:flex;margin-bottom:8px}body.month-view-active .week{display:grid;margin-bottom:4px}body.month-view-active .days{display:grid!important;height:calc(100% - 132px);min-height:360px;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr));gap:3px}body.month-view-active .day{min-height:0;padding:5px 2px;border-radius:8px}body.month-view-active .calendar-status,body.month-view-active .calendar-legend{font-size:9px;gap:8px;margin-top:5px}body.month-view-active .day .event{min-height:0;max-height:2.3em;font-size:7px;padding:2px 1px;margin-top:2px}}
+
+/* Final mobile calendar layout: the grid lives inside .top, so keep that wrapper visible. */
+@media(max-width:600px){
+  body.month-view-active{overflow:hidden}
+  body.month-view-active .main{height:calc(100dvh - 58px);min-height:0;display:block;overflow:hidden;padding:8px 10px calc(54px + env(safe-area-inset-bottom))}
+  body.month-view-active .top{display:block!important;height:100%;margin:0!important}
+  body.month-view-active .top>div:first-child,body.month-view-active .top>.stats{display:none!important}
+  body.month-view-active .grid{display:block!important;width:100%;height:100%;min-height:0;overflow:visible}
+  body.month-view-active .calendar{position:static!important;inset:auto!important;display:flex!important;flex-direction:column;width:100%;height:100%;min-height:0;overflow:hidden;padding:12px 10px}
+  body.month-view-active .cal-head,body.month-view-active .week,body.month-view-active .calendar-status,body.month-view-active .calendar-legend{flex:0 0 auto}
+  body.month-view-active .days{display:grid!important;flex:1 1 auto;height:auto;min-height:0;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr));gap:3px}
+}
 </style>
 </head>
 <body>
