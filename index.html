@@ -178,7 +178,7 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
   window.addEventListener('focus',syncSharedCalendar);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncSharedCalendar();});
 
-  const GOOGLE_CLIENT_ID='';
+  const GOOGLE_CLIENT_ID='754804016893-opkgdmo4fbk1nambk8eurseir0ecke14.apps.googleusercontent.com';
   const googleModal=document.getElementById('googleModal'),googleStatus=document.getElementById('googleConnectionStatus'),googleAuthorize=document.getElementById('googleAuthorize'),googleImport=document.getElementById('googleImport');
   let googleTokenClient=null,googleAccessToken='',googleAccountEmail='';
   document.querySelectorAll('[data-open-google]').forEach(button=>button.addEventListener('click',()=>googleModal.classList.add('open')));
