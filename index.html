@@ -131,7 +131,7 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
   const deleteConfirm=document.createElement('div');deleteConfirm.className='delete-confirm';deleteConfirm.hidden=true;deleteConfirm.innerHTML='<span>Diesen Termin wirklich löschen?</span><div><button type="button" class="cancel" id="keepEvent">Behalten</button><button type="button" class="save" id="confirmDelete">Ja, löschen</button></div>';form.parentElement.insertBefore(deleteConfirm,form.parentElement.querySelector('.modal-actions'));
   deleteButton.addEventListener('click',()=>{if(editingId)deleteConfirm.hidden=false;});
   deleteConfirm.querySelector('#keepEvent').addEventListener('click',()=>{deleteConfirm.hidden=true;});
-  deleteConfirm.querySelector('#confirmDelete').addEventListener('click',async()=>{if(!editingId)return;const button=deleteConfirm.querySelector('#confirmDelete');button.disabled=true;try{const {error}=await supabaseClient.rpc('shared_calendar_delete',{p_token:sharedToken,p_event_id:editingId});if(error)throw error;await refreshRemoteEvents();connection.textContent=`Supabase synchronisé · ${eventsCache.length} rendez-vous`;editingId=null;deleteConfirm.hidden=true;modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');renderMonth();renderAgenda();renderDay();}catch(error){connection.textContent=`Suppression impossible : ${error.message}`;connection.style.color='#aa765c';}finally{button.disabled=false;}});
+  deleteConfirm.querySelector('#confirmDelete').addEventListener('click',async()=>{if(!editingId)return;const button=deleteConfirm.querySelector('#confirmDelete');button.disabled=true;try{const {error}=await supabaseClient.rpc('shared_calendar_delete',{p_token:sharedToken,p_event_id:editingId});if(error)throw error;await refreshRemoteEvents();signalCalendarUpdate();updateSyncStatus();editingId=null;deleteConfirm.hidden=true;modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');renderMonth();renderAgenda();renderDay();}catch(error){connection.textContent=`Suppression impossible : ${error.message}`;connection.style.color='#aa765c';}finally{button.disabled=false;}});
   
   modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');editingId=null;deleteConfirm.hidden=true;}});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('open')){modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');editingId=null;deleteConfirm.hidden=true;}});
   function renderAgenda(){agendaCard.querySelectorAll('.agenda-item,.day-empty').forEach(el=>el.remove());agendaCard.querySelector('h2').textContent=selectedDay===todayISO()?'Heute':dateLabel(selectedDay);const list=readEvents().filter(e=>occursOn(e,selectedDay)).sort((a,b)=>timeOf(getStart(a)).localeCompare(timeOf(getStart(b))));if(!list.length){const empty=document.createElement('div');empty.className='day-empty';empty.textContent='Keine Termine für diesen Tag. Füge oben einen Termin hinzu.';agendaCard.append(empty);return;}list.forEach(e=>{const occurrence=onDate(e,selectedDay),row=document.createElement('div');row.className='agenda-item';row.tabIndex=0;row.setAttribute('role','button');row.setAttribute('aria-label',`${e.title}, ${timeOf(occurrence.start)}. Zum Bearbeiten öffnen`);const time=document.createElement('div');time.className='time';time.textContent=timeOf(occurrence.start)+(occurrence.end?'–'+timeOf(occurrence.end):'');const dot=document.createElement('div');dot.className='dot';const info=document.createElement('div');const name=document.createElement('div');name.className='event-name';name.textContent=e.title||'Termin';const meta=document.createElement('div');meta.className='event-meta';meta.textContent=[e.person,e.place].filter(Boolean).join(' · ');info.append(name,meta);row.append(time,dot,info);row.addEventListener('click',()=>editEvent(e.id));row.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();editEvent(e.id);}});agendaCard.append(row);});}
@@ -147,7 +147,7 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
   document.getElementById('open').addEventListener('click',()=>{prepareNew();modal.classList.add('open');});
   document.getElementById('mobileAdd').addEventListener('click',()=>document.getElementById('open').click());
   modal.querySelector('.modal-close').addEventListener('click',()=>{modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');editingId=null;deleteConfirm.hidden=true;});
-  saveButton.addEventListener('click',async e=>{e.preventDefault();e.stopImmediatePropagation();if(!titleInput.value.trim()){titleInput.focus();return;}if(!dateInput.value){dateInput.focus();return;}syncTimeConstraints();const start=`${dateInput.value}T${startTimeInput.value||'09:00'}`,end=`${endInput.value}T${endTimeInput.value||''}`;if(endInput.value<dateInput.value||(endInput.value===dateInput.value&&endTimeInput.value<=startTimeInput.value)){endInput.focus();return;}const item={id:editingId,title:titleInput.value.trim(),person:personSelect.value,start,end,date:start,place:placeInput.value.trim(),recurrence:recurrenceInput.value};const button=saveButton;button.disabled=true;button.textContent='Speichern …';try{const {data,error}=await supabaseClient.rpc('shared_calendar_save',{p_token:sharedToken,p_event_id:editingId||null,p_title:item.title,p_person:item.person,p_start:new Date(start).toISOString(),p_end:new Date(end).toISOString(),p_location:item.place,p_recurrence:item.recurrence});if(error)throw error;item.id=data;await refreshRemoteEvents();connection.textContent=`Supabase synchronisé · ${eventsCache.length} rendez-vous`;connection.style.color='#5e806b';selectedDay=eventDay(item);monthDate=new Date(Number(selectedDay.slice(0,4)),Number(selectedDay.slice(5,7))-1,1);editingId=null;modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');renderMonth();renderAgenda();showDay();}catch(error){connection.textContent=`Enregistrement impossible : ${error.message}`;connection.style.color='#aa765c';console.error('Supabase save:',error);}finally{button.disabled=false;button.textContent=editingId?'Speichern':'Hinzufügen';}},true);
+  saveButton.addEventListener('click',async e=>{e.preventDefault();e.stopImmediatePropagation();if(!titleInput.value.trim()){titleInput.focus();return;}if(!dateInput.value){dateInput.focus();return;}syncTimeConstraints();const start=`${dateInput.value}T${startTimeInput.value||'09:00'}`,end=`${endInput.value}T${endTimeInput.value||''}`;if(endInput.value<dateInput.value||(endInput.value===dateInput.value&&endTimeInput.value<=startTimeInput.value)){endInput.focus();return;}const item={id:editingId,title:titleInput.value.trim(),person:personSelect.value,start,end,date:start,place:placeInput.value.trim(),recurrence:recurrenceInput.value};const button=saveButton;button.disabled=true;button.textContent='Speichern …';try{const {data,error}=await supabaseClient.rpc('shared_calendar_save',{p_token:sharedToken,p_event_id:editingId||null,p_title:item.title,p_person:item.person,p_start:new Date(start).toISOString(),p_end:new Date(end).toISOString(),p_location:item.place,p_recurrence:item.recurrence});if(error)throw error;item.id=data;await refreshRemoteEvents();signalCalendarUpdate();updateSyncStatus();selectedDay=eventDay(item);monthDate=new Date(Number(selectedDay.slice(0,4)),Number(selectedDay.slice(5,7))-1,1);editingId=null;modal.classList.remove('open','edit-mode');modalPanel.classList.remove('editing');renderMonth();renderAgenda();showDay();}catch(error){connection.textContent=`Enregistrement impossible : ${error.message}`;connection.style.color='#aa765c';console.error('Supabase save:',error);}finally{button.disabled=false;button.textContent=editingId?'Speichern':'Hinzufügen';}},true);
   document.querySelectorAll('.agenda-item,.event').forEach(el=>el.remove());monthCard.querySelector('.cal-head > .link')?.remove();Array.from(agendaCard.children).filter(el=>!el.classList.contains('card-head')).forEach(el=>el.remove());document.querySelector('.eyebrow').textContent=dateLabel(selectedDay);setFormDateTime(`${selectedDay}T18:00`,`${selectedDay}T19:00`);await initializeSharedCalendar();renderMonth();renderAgenda();showDay();
   let backgroundSyncRunning=false;
   async function syncSharedCalendar(){
@@ -166,17 +166,42 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
       }else if((eventsCache||[]).length!==(previousById.size)){
         renderMonth();renderAgenda();renderDay();
       }
-      connection.textContent=`Supabase synchronisé · ${eventsCache.length} rendez-vous`;
-      connection.style.color='#5e806b';
+      updateSyncStatus();
     }catch(error){
       connection.textContent=`Synchronisation impossible : ${error.message||'réessaie dans un instant'}`;
       connection.style.color='#aa765c';
       console.warn('Supabase background sync:',error);
     }finally{backgroundSyncRunning=false;}
   }
+  let calendarRealtimeChannel=null,calendarRealtimeLabel='';
+  function updateSyncStatus(){
+    connection.textContent=`Supabase synchronisé · ${eventsCache?.length||0} rendez-vous${calendarRealtimeLabel?` · ${calendarRealtimeLabel}`:''}`;
+    connection.style.color='#5e806b';
+  }
+  function signalCalendarUpdate(){
+    if(!calendarRealtimeChannel)return;
+    calendarRealtimeChannel.send({type:'broadcast',event:'calendar-changed',payload:{changedAt:Date.now()}}).catch(error=>console.warn('Supabase realtime broadcast:',error));
+  }
+  async function connectCalendarRealtime(){
+    if(!window.crypto?.subtle){calendarRealtimeLabel='actualisation automatique';return;}
+    try{
+      const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(sharedToken));
+      const topic=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+      calendarRealtimeLabel=`polling · Famille ${topic.slice(0,6).toUpperCase()}`;
+      calendarRealtimeChannel=supabaseClient.channel(`family-calendar-${topic}`,{config:{broadcast:{self:false}}})
+        .on('broadcast',{event:'calendar-changed'},()=>{if(document.visibilityState==='visible')syncSharedCalendar();})
+        .subscribe(status=>{
+          calendarRealtimeLabel=status==='SUBSCRIBED'?`temps réel actif · Famille ${topic.slice(0,6).toUpperCase()}`:`polling · Famille ${topic.slice(0,6).toUpperCase()}`;
+          updateSyncStatus();
+        });
+    }catch(error){calendarRealtimeLabel='actualisation automatique';console.warn('Supabase realtime unavailable:',error);}
+  }
   window.setInterval(syncSharedCalendar,10000);
   window.addEventListener('focus',syncSharedCalendar);
+  window.addEventListener('online',syncSharedCalendar);
+  window.addEventListener('pageshow',()=>{if(document.visibilityState==='visible')syncSharedCalendar();});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncSharedCalendar();});
+  void connectCalendarRealtime();
 
   const GOOGLE_CLIENT_ID='754804016893-opkgdmo4fbk1nambk8eurseir0ecke14.apps.googleusercontent.com';
   const googleModal=document.getElementById('googleModal'),googleStatus=document.getElementById('googleConnectionStatus'),googleAuthorize=document.getElementById('googleAuthorize'),googleImport=document.getElementById('googleImport');
@@ -204,7 +229,7 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
       for(const event of googleEvents){if(event.status==='cancelled'||!event.id)continue;const startValue=event.start?.dateTime||event.start?.date,endValue=event.end?.dateTime||event.end?.date;if(!startValue||!endValue)continue;let startDate,startAt,endDate,endAt;if(event.start.dateTime){startDate=new Date(startValue);endDate=new Date(endValue);startAt=startDate.toISOString();endAt=endDate.toISOString();}else{const startParts=startValue.split('-').map(Number),endParts=endValue.split('-').map(Number);startDate=new Date(startParts[0],startParts[1]-1,startParts[2],9);const inclusiveEnd=new Date(endParts[0],endParts[1]-1,endParts[2]);inclusiveEnd.setDate(inclusiveEnd.getDate()-1);endDate=new Date(inclusiveEnd.getFullYear(),inclusiveEnd.getMonth(),inclusiveEnd.getDate(),10);startAt=startDate.toISOString();endAt=endDate.toISOString();}
         const {error}=await supabaseClient.rpc('shared_calendar_import_google_event',{p_token:sharedToken,p_google_account_email:googleAccountEmail,p_google_event_id:event.id,p_title:event.summary||'Google-Termin',p_start:startAt,p_end:endAt,p_location:event.location||''});if(error)throw error;if(!firstImportedDate)firstImportedDate=`${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-${String(startDate.getDate()).padStart(2,'0')}`;imported++;
       }
-      await refreshRemoteEvents();if(firstImportedDate){selectedDay=firstImportedDate;monthDate=new Date(Number(selectedDay.slice(0,4)),Number(selectedDay.slice(5,7))-1,1);document.querySelector('.eyebrow').textContent=dateLabel(selectedDay);}renderMonth();renderAgenda();renderDay();googleStatus.textContent=`Import terminé : ${imported} rendez-vous synchronisé(s) depuis ${googleAccountEmail}.`;googleStatus.dataset.error='false';
+      await refreshRemoteEvents();signalCalendarUpdate();if(firstImportedDate){selectedDay=firstImportedDate;monthDate=new Date(Number(selectedDay.slice(0,4)),Number(selectedDay.slice(5,7))-1,1);document.querySelector('.eyebrow').textContent=dateLabel(selectedDay);}renderMonth();renderAgenda();renderDay();googleStatus.textContent=`Import terminé : ${imported} rendez-vous synchronisé(s) depuis ${googleAccountEmail}.`;googleStatus.dataset.error='false';
     }catch(error){googleStatus.textContent=`Import impossible : ${error.message}`;googleStatus.dataset.error='true';console.error('Google Calendar import:',error);}finally{googleImport.disabled=false;}
   });
 })();
