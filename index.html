@@ -127,6 +127,7 @@
   body.month-view-active .grid{display:grid;width:100%;min-width:0;grid-template-columns:minmax(0,1fr);gap:0}
 }
 
+.daily-quote-overlay{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:20px;background:rgba(29,42,37,.34);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}.daily-quote-overlay[hidden]{display:none}.daily-quote-card{position:relative;display:grid;gap:14px;width:min(100%,440px);padding:28px;border:1px solid #e4ebe6;border-radius:22px;background:#fff;color:var(--ink);text-align:left;box-shadow:0 22px 70px rgba(25,39,32,.2);font:inherit;cursor:pointer;animation:quoteRise .24s ease-out}.daily-quote-kicker{color:#64806d;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.daily-quote-mark{color:#b8d4c4;font:700 52px/.7 Georgia,serif}.daily-quote-text{margin:0;font:700 23px/1.35 Georgia,serif;letter-spacing:-.02em}.daily-quote-author{color:#73817b;font-size:13px}.daily-quote-dismiss{justify-self:end;color:#55715f;font-size:12px;font-weight:600}@keyframes quoteRise{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}@media(max-width:600px){.daily-quote-overlay{padding:16px}.daily-quote-card{gap:12px;padding:23px 21px;border-radius:20px}.daily-quote-text{font-size:21px}}@media(max-width:600px){body.month-view-active .main{padding:8px 10px calc(54px + env(safe-area-inset-bottom))}body.month-view-active .top{display:none!important}body.month-view-active .grid{flex:1 1 auto;min-height:0}body.month-view-active .calendar{flex:1 1 auto;min-height:0}body.month-view-active .days{flex:1 1 0%;min-height:0;grid-template-rows:repeat(6,minmax(0,1fr))}body.month-view-active .mobile-add{right:12px;bottom:calc(8px + env(safe-area-inset-bottom));min-height:46px}}
 </style>
 </head>
 <body>
@@ -143,7 +144,7 @@ const SUPABASE_KEY='sb_publishable_OQMZ6T7l65d5AYqyyy35ag_R-C4BiA9';
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const addButton=document.getElementById('open'); const navButtons=document.querySelectorAll('.nav button'); if(navButtons[2]) navButtons[2].style.display='none'; const agendaCard=document.querySelector('.card'); const calendarCard=document.querySelector('.calendar'); if(agendaCard&&calendarCard){calendarCard.style.display='none';navButtons[0]?.addEventListener('click',()=>{agendaCard.style.display='block';calendarCard.style.display='none';});navButtons[1]?.addEventListener('click',()=>{agendaCard.style.display='none';calendarCard.style.display='block';});}
 if(addButton){addButton.style.display='block';addButton.textContent='＋ Termin hinzufügen';addButton.onclick=()=>modal.classList.add('open');} const statsBlock=document.querySelector('.stats'); if(statsBlock) statsBlock.style.display='none'; const welcomeHeading=document.querySelector('.heading'); if(welcomeHeading) welcomeHeading.textContent='Bonjour Familie Kevers'; const brand=document.querySelector('.brand'); if(brand){brand.contentEditable='true';brand.setAttribute('role','textbox');brand.setAttribute('aria-label','Familiennamen bearbeiten');brand.setAttribute('title','Klicken und Familiennamen bearbeiten');brand.spellcheck=false;brand.textContent=localStorage.getItem('notre-family-label')||brand.textContent.trim();brand.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();brand.blur();}});brand.addEventListener('blur',()=>{const value=brand.textContent.trim()||'Unsere Familie';brand.textContent=value;localStorage.setItem('notre-family-label',value);});}
-document.querySelectorAll('.nav button').forEach((button,index)=>button.addEventListener('click',()=>{document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));button.classList.add('active');const mainHeading=document.querySelector('.heading');if(index===0){mainHeading.innerHTML='Bonjour Thomas <span style="font-size:26px">☀️</span>';document.querySelector('.card').scrollIntoView({behavior:'smooth'});}if(index===1){mainHeading.textContent='Kalender';document.querySelector('.calendar').scrollIntoView({behavior:'smooth'});}if(index===2){mainHeading.textContent=' ';document.querySelector('.card').scrollIntoView({behavior:'smooth'});}}));
+document.querySelectorAll('.nav button').forEach((button,index)=>button.addEventListener('click',()=>{document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));button.classList.add('active');const mainHeading=document.querySelector('.heading');if(index===0){mainHeading.textContent='Bonjour Familie Kevers';document.querySelector('.card').scrollIntoView({behavior:'smooth'});}if(index===1){mainHeading.textContent='Kalender';document.querySelector('.calendar').scrollIntoView({behavior:'smooth'});}if(index===2){mainHeading.textContent=' ';document.querySelector('.card').scrollIntoView({behavior:'smooth'});}}));
 let currentSession=null; function updateAuthUI(session){currentSession=session;if(!addButton)return;addButton.disabled=false;addButton.style.opacity='1';addButton.textContent='＋ Termin hinzufügen';}
 supabaseClient.auth.getSession().then(({data})=>updateAuthUI(data.session));
 const login=document.createElement('button'); login.textContent='Se connecter'; login.style='display:none'; document.body.appendChild(login);
@@ -151,7 +152,7 @@ const authBox=document.createElement('div'); authBox.style='display:none;positio
 login.onclick=()=>{authBox.style.display=authBox.style.display==='none'?'block':'none'};
 addButton.onclick=()=>{if(!currentSession){authBox.style.display='block';return} modal.classList.add('open');};
 authBox.querySelector('#authSend').onclick=async()=>{const email=authBox.querySelector('#authEmail').value.trim();const msg=authBox.querySelector('#authMsg');if(!email){msg.textContent='Entrez une adresse email.';return}const {error}=await supabaseClient.auth.signInWithOtp({email,options:{emailRedirectTo:location.href}});msg.textContent=error?`Erreur Supabase : ${error.message}`:'Lien envoyé. Consultez votre boîte mail.';};
-supabaseClient.auth.onAuthStateChange((event,session)=>{updateAuthUI(session);if(session){login.textContent=session.user.email;authBox.style.display='none';const heading=document.querySelector('.heading');if(heading) heading.innerHTML='Bonjour Thomas <span style="font-size:26px">☀️</span>';}});
+supabaseClient.auth.onAuthStateChange((event,session)=>{updateAuthUI(session);if(session){login.textContent=session.user.email;authBox.style.display='none';const heading=document.querySelector('.heading');if(heading) heading.textContent='Bonjour Familie Kevers';}});
 const connection=document.createElement('div'); connection.style='display:none;font-size:12px;color:#7b8985;margin:-18px 0 20px'; connection.textContent='Connexion à l’agenda…'; document.querySelector('.stats').before(connection);
 connection.setAttribute('role','status');connection.textContent='Supabase-Verbindung wird hergestellt …';connection.style.color='#7b8985';
 const modal=document.getElementById('modal');
@@ -463,6 +464,43 @@ document.addEventListener('click',async(e)=>{if(e.target.id==='signIn'||e.target
     document.getElementById("weatherIcon").textContent="🌤️";
     document.getElementById("weatherDescription").textContent="Wetter gerade nicht verfügbar";
   }
+})();
+</script>
+<div class="daily-quote-overlay" id="dailyQuoteOverlay" hidden role="dialog" aria-modal="true" aria-label="Pensée du jour"><button class="daily-quote-card" id="dailyQuoteCard" type="button" aria-label="Fermer la pensée du jour"><span class="daily-quote-kicker">Une pensée pour aujourd’hui</span><span class="daily-quote-mark" aria-hidden="true">“</span><span class="daily-quote-text" id="dailyQuoteText"></span><span class="daily-quote-author" id="dailyQuoteAuthor"></span><span class="daily-quote-dismiss">Touchez pour continuer</span></button></div><script>
+(function dailyQuote(){
+  const overlay=document.getElementById('dailyQuoteOverlay'),card=document.getElementById('dailyQuoteCard');
+  if(!overlay||!card)return;
+  const quotes=[
+    {text:"Ce n’est pas parce que les choses sont difficiles que nous n’osons pas ; c’est parce que nous n’osons pas qu’elles sont difficiles.",author:"Sénèque · Lettre à Lucilius, 104.26"},
+    {text:"Il n’est pas de vent favorable pour celui qui ne sait pas où il va.",author:"Sénèque · Lettre à Lucilius, 71.3"},
+    {text:"La vie est longue, si tu sais en faire bon usage.",author:"Sénèque · De la brièveté de la vie"}
+  ];
+  const localDate=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+  const storageKey="notre-daily-thought-v1";let shownDate=null;
+  function hasSeen(today){try{return localStorage.getItem(storageKey)===today}catch{return false}}
+  function markSeen(today){shownDate=today;try{localStorage.setItem(storageKey,today)}catch{}}
+  function showIfDue(){
+    const now=new Date(),today=localDate();
+    if(now.getHours()<7||now.getHours()>=11||shownDate===today||hasSeen(today)||!document.body)return;
+    const dayNumber=Math.floor(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())/86400000),quote=quotes[dayNumber%quotes.length];
+    document.getElementById('dailyQuoteText').textContent=quote.text;
+    document.getElementById('dailyQuoteAuthor').textContent=quote.author;
+    markSeen(today);
+    overlay.hidden=false;
+  }
+  function dismiss(){overlay.hidden=true}
+  card.addEventListener('click',dismiss);
+  overlay.addEventListener('click',dismiss);
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!overlay.hidden)dismiss()});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)showIfDue()});
+  window.addEventListener('focus',showIfDue);
+  showIfDue();
+  function scheduleMorning(){
+    const now=new Date(),next=new Date(now.getFullYear(),now.getMonth(),now.getDate(),7,0,0,0);
+    if(now>=next)next.setDate(next.getDate()+1);
+    window.setTimeout(()=>{showIfDue();scheduleMorning()},next-now);
+  }
+  scheduleMorning();
 })();
 </script>
 </body></html>
