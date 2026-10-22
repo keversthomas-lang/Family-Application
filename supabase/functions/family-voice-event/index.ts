@@ -44,7 +44,6 @@ Deno.serve(async (req) => {
     const audio = form.get("audio");
     const today = String(form.get("today") || "");
     const timezone = String(form.get("timezone") || "Europe/Berlin");
-    const locale = String(form.get("locale") || "de-DE");
 
     if (!/^[A-Za-z0-9_-]{40,}$/.test(token)) return jsonResponse({ error: "Lien familial invalide." }, 401, origin);
     if (!(audio instanceof File) || audio.size === 0) return jsonResponse({ error: "Aucun enregistrement reçu." }, 400, origin);
@@ -69,9 +68,7 @@ Deno.serve(async (req) => {
     transcriptionForm.set("file", audio, audio.name || "family-appointment.webm");
     transcriptionForm.set("model", "gpt-4o-mini-transcribe");
     transcriptionForm.set("response_format", "json");
-    if (locale.startsWith("de")) transcriptionForm.set("language", "de");
-    else if (locale.startsWith("fr")) transcriptionForm.set("language", "fr");
-    else if (locale.startsWith("en")) transcriptionForm.set("language", "en");
+    transcriptionForm.set("prompt", `Family members and likely names: ${allowedPeople.join(", ")}. The speaker may use German, French, or English.`);
 
     const transcriptionResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
