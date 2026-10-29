@@ -272,11 +272,13 @@ function setAuthMode(mode){
   authSubmit.textContent=signup?'Sign up':'Sign in';
   authPassword.autocomplete=signup?'new-password':'current-password';
   authConfirmLabel.hidden=!signup;
+  authConfirmLabel.style.display=signup?'grid':'none';
   authConfirm.required=signup;
   authOverlay.querySelector('#authSwitchText').textContent=signup?'Du hast schon ein Konto?':'Noch kein Konto?';
   authOverlay.querySelector('#authSwitch').textContent=signup?'Sign in':'Sign up';
   setAuthMessage('');
 }
+setAuthMode('signin');
 authOverlay.querySelector('#authSwitch').addEventListener('click',()=>setAuthMode(authMode==='signin'?'signup':'signin'));
 authForm.addEventListener('submit',async event=>{
   event.preventDefault();
