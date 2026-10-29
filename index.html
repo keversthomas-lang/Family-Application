@@ -202,18 +202,134 @@ document.querySelectorAll('.agenda-item').forEach(el=>el.remove()); document.que
 const empty=document.createElement('div'); empty.textContent='Noch keine Termine — füge deinen ersten Termin hinzu.'; empty.style='color:#7b8985;font-size:13px;padding:20px 0'; document.querySelector('.card').appendChild(empty);
 const familyPeople=document.querySelectorAll('.person'); if(familyPeople[0]) familyPeople[0].innerHTML='<span class="avatar pa">T</span> Thomas <small style="margin-left:auto;color:#7b8985">Mitglied</small>'; if(familyPeople[1]) familyPeople[1].innerHTML='<span class="avatar pm">M</span> Minyao <small style="margin-left:auto;color:#7b8985">Mitglied</small>'; if(familyPeople[2]) familyPeople[2].innerHTML='<span class="avatar pl">N</span> Noe <small style="margin-left:auto;color:#7b8985">Kind</small>'; if(familyPeople[3]) familyPeople[3].innerHTML='<span class="avatar pt">M</span> Mia <small style="margin-left:auto;color:#7b8985">Kind</small>';
 const SUPABASE_KEY='sb_publishable_OQMZ6T7l65d5AYqyyy35ag_R-C4BiA9';
-const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const addButton=document.getElementById('open'); const agendaCard=document.querySelector('.card'); const calendarCard=document.querySelector('.calendar'); if(calendarCard)calendarCard.style.display='none';
 if(addButton){addButton.style.display='block';addButton.textContent='＋ Termin hinzufügen';addButton.onclick=()=>modal.classList.add('open');} const statsBlock=document.querySelector('.stats'); if(statsBlock) statsBlock.style.display='none'; const welcomeHeading=document.querySelector('.heading'); if(welcomeHeading) welcomeHeading.textContent='Bonjour Familie Kevers'; const brand=document.querySelector('.brand'); if(brand){brand.contentEditable='true';brand.setAttribute('role','textbox');brand.setAttribute('aria-label','Familiennamen bearbeiten');brand.setAttribute('title','Klicken und Familiennamen bearbeiten');brand.spellcheck=false;brand.textContent=localStorage.getItem('notre-family-label')||brand.textContent.trim();brand.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();brand.blur();}});brand.addEventListener('blur',()=>{const value=brand.textContent.trim()||'Unsere Familie';brand.textContent=value;localStorage.setItem('notre-family-label',value);});}
 
-let currentSession=null; function updateAuthUI(session){currentSession=session;if(!addButton)return;addButton.disabled=false;addButton.style.opacity='1';addButton.textContent='＋ Termin hinzufügen';}
-supabaseClient.auth.getSession().then(({data})=>updateAuthUI(data.session));
-const login=document.createElement('button'); login.textContent='Se connecter'; login.style='display:none'; document.body.appendChild(login);
-const authBox=document.createElement('div'); authBox.style='display:none;position:fixed;right:24px;bottom:70px;background:#fff;border:1px solid #e8edeb;border-radius:16px;padding:18px;width:290px;box-shadow:0 18px 45px #24312f22;z-index:4'; authBox.innerHTML='<b style="font:700 18px Georgia,serif">Connexion</b><p style="color:#7b8985;font-size:12px;line-height:1.4">Recevez un lien de connexion par email.</p><input id="authEmail" type="email" placeholder="vous@exemple.com" style="width:100%;padding:10px;border:1px solid #dfe7e2;border-radius:8px"><button id="authSend" style="margin-top:10px;width:100%;padding:10px;border:0;border-radius:8px;background:#24312f;color:#fff;font-weight:600">Envoyer le lien</button><div id="authMsg" style="font-size:12px;margin-top:9px;color:#5e806b"></div>'; document.body.appendChild(authBox);
-login.onclick=()=>{authBox.style.display=authBox.style.display==='none'?'block':'none'};
-addButton.onclick=()=>{if(!currentSession){authBox.style.display='block';return} modal.classList.add('open');};
-authBox.querySelector('#authSend').onclick=async()=>{const email=authBox.querySelector('#authEmail').value.trim();const msg=authBox.querySelector('#authMsg');if(!email){msg.textContent='Entrez une adresse email.';return}const {error}=await supabaseClient.auth.signInWithOtp({email,options:{emailRedirectTo:location.href}});msg.textContent=error?`Erreur Supabase : ${error.message}`:'Lien envoyé. Consultez votre boîte mail.';};
-supabaseClient.auth.onAuthStateChange((event,session)=>{updateAuthUI(session);if(session){login.textContent=session.user.email;authBox.style.display='none';const heading=document.querySelector('.heading');if(heading) heading.textContent='Bonjour Familie Kevers';}});
+let currentSession=null;
+const authRedirectUrl=location.origin+location.pathname+location.search;
+const authStyle=document.createElement('style');
+authStyle.textContent=`
+  body.auth-required .app{visibility:hidden}
+  .auth-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(36,49,47,.34);backdrop-filter:blur(5px)}
+  .auth-overlay[hidden]{display:none}
+  .auth-card{width:min(440px,100%);padding:30px;border:1px solid #e8edeb;border-radius:22px;background:#fbfaf7;box-shadow:0 25px 80px rgba(39,55,49,.2)}
+  .auth-brand{margin:0 0 8px;font:700 28px Georgia,serif;letter-spacing:-.04em;color:#24312f}
+  .auth-intro{margin:0 0 22px;color:#718078;line-height:1.5}
+  .auth-form{display:grid;gap:12px}
+  .auth-form label{display:grid;gap:6px;color:#64736e;font-size:12px}
+  .auth-form input{width:100%;min-height:46px;padding:11px 13px;border:1px solid #dfe7e2;border-radius:10px;background:#fff;color:#24312f;font:inherit}
+  .auth-primary,.auth-google{width:100%;min-height:46px;border:1px solid #b8d4c4;border-radius:10px;background:#f1f5f1;color:#385b48;font:600 14px inherit;cursor:pointer}
+  .auth-primary:hover,.auth-google:hover{background:#e4f1ea}
+  .auth-google{margin-top:12px;background:#fff}
+  .auth-divider{display:flex;align-items:center;gap:10px;margin:15px 0;color:#82908a;font-size:11px}
+  .auth-divider:before,.auth-divider:after{content:'';height:1px;flex:1;background:#e8edeb}
+  .auth-switch{margin:18px 0 0;text-align:center;color:#718078;font-size:13px}
+  .auth-switch button{border:0;background:none;color:#385b48;text-decoration:underline;text-underline-offset:3px;font:600 13px inherit;cursor:pointer}
+  .auth-message{min-height:18px;margin:12px 0 0;color:#5e806b;font-size:12px;line-height:1.45}
+  .auth-message[data-error=true]{color:#aa5c4a}
+  .auth-account{position:fixed;right:18px;top:18px;z-index:8;display:flex;align-items:center;gap:9px;padding:7px 9px 7px 13px;border:1px solid #e8edeb;border-radius:999px;background:#fff;color:#64736e;font-size:12px;box-shadow:0 3px 14px #24312f12}
+  .auth-account[hidden]{display:none}
+  .auth-account button{border:1px solid #dfe7e2;border-radius:999px;background:#fff;padding:7px 10px;color:#385b48;font:600 12px inherit;cursor:pointer}
+  @media(max-width:600px){.auth-card{padding:24px 20px;border-radius:18px}.auth-brand{font-size:25px}.auth-account{top:auto;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));padding:5px;background:#fbfaf7}.auth-account span{display:none}}
+`;
+document.head.appendChild(authStyle);
+document.body.classList.add('auth-required');
+const authOverlay=document.createElement('section');
+authOverlay.className='auth-overlay';
+authOverlay.hidden=true;
+authOverlay.setAttribute('aria-labelledby','authTitle');
+authOverlay.innerHTML=`<div class="auth-card">
+  <h1 class="auth-brand" id="authTitle">Sign in</h1>
+  <p class="auth-intro" id="authIntro">Melde dich an, um den Familienkalender zu öffnen.</p>
+  <form class="auth-form" id="authForm">
+    <label>E-Mail-Adresse<input id="authEmail" name="email" type="email" autocomplete="email" required placeholder="name@example.com"></label>
+    <label>Passwort<input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="8" required placeholder="Mindestens 8 Zeichen"></label>
+    <label id="authConfirmLabel" hidden>Passwort bestätigen<input id="authConfirm" name="confirmPassword" type="password" autocomplete="new-password" minlength="8"></label>
+    <button class="auth-primary" id="authSubmit" type="submit">Sign in</button>
+  </form>
+  <button class="auth-google" id="authGoogle" type="button">Continue with Google</button>
+  <div class="auth-divider">oder</div>
+  <p class="auth-switch"><span id="authSwitchText">Noch kein Konto?</span> <button id="authSwitch" type="button">Sign up</button></p>
+  <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
+</div>`;
+document.body.appendChild(authOverlay);
+const authForm=authOverlay.querySelector('#authForm');
+const authEmail=authOverlay.querySelector('#authEmail');
+const authPassword=authOverlay.querySelector('#authPassword');
+const authConfirm=authOverlay.querySelector('#authConfirm');
+const authConfirmLabel=authOverlay.querySelector('#authConfirmLabel');
+const authSubmit=authOverlay.querySelector('#authSubmit');
+const authMessage=authOverlay.querySelector('#authMessage');
+let authMode='signin';
+function setAuthMessage(message,isError=false){authMessage.textContent=message;authMessage.dataset.error=String(isError);}
+function setAuthMode(mode){
+  authMode=mode;
+  const signup=mode==='signup';
+  authOverlay.querySelector('#authTitle').textContent=signup?'Konto erstellen':'Sign in';
+  authOverlay.querySelector('#authIntro').textContent=signup?'Erstelle dein Konto mit E-Mail und Passwort. Du erhältst eine E-Mail zur Bestätigung.':'Melde dich an, um den Familienkalender zu öffnen.';
+  authSubmit.textContent=signup?'Sign up':'Sign in';
+  authPassword.autocomplete=signup?'new-password':'current-password';
+  authConfirmLabel.hidden=!signup;
+  authConfirm.required=signup;
+  authOverlay.querySelector('#authSwitchText').textContent=signup?'Du hast schon ein Konto?':'Noch kein Konto?';
+  authOverlay.querySelector('#authSwitch').textContent=signup?'Sign in':'Sign up';
+  setAuthMessage('');
+}
+authOverlay.querySelector('#authSwitch').addEventListener('click',()=>setAuthMode(authMode==='signin'?'signup':'signin'));
+authForm.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const email=authEmail.value.trim(),password=authPassword.value;
+  if(authMode==='signup'&&password!==authConfirm.value){setAuthMessage('Die Passwörter stimmen nicht überein.',true);authConfirm.focus();return;}
+  authSubmit.disabled=true;authSubmit.textContent=authMode==='signup'?'Konto wird erstellt…':'Anmeldung läuft…';setAuthMessage('');
+  try{
+    if(authMode==='signup'){
+      const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:authRedirectUrl}});
+      if(error)throw error;
+      if(data.session){updateAuthUI(data.session);}
+      else setAuthMessage('Konto erstellt. Bitte bestätige deine E-Mail über den Link in deinem Postfach. Danach kannst du dich anmelden.');
+    }else{
+      const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+      if(error)throw error;
+      updateAuthUI(data.session);
+    }
+  }catch(error){setAuthMessage(error.message||'Anmeldung fehlgeschlagen. Bitte versuche es erneut.',true);}
+  finally{authSubmit.disabled=false;authSubmit.textContent=authMode==='signup'?'Sign up':'Sign in';}
+});
+authOverlay.querySelector('#authGoogle').addEventListener('click',async()=>{
+  const button=authOverlay.querySelector('#authGoogle');button.disabled=true;setAuthMessage('');
+  try{
+    const {error}=await supabaseClient.auth.signInWithOAuth({provider:'google',options:{redirectTo:authRedirectUrl}});
+    if(error)throw error;
+  }catch(error){setAuthMessage(error.message||'Google-Anmeldung fehlgeschlagen.',true);button.disabled=false;}
+});
+const accountControl=document.createElement('div');
+accountControl.className='auth-account';
+accountControl.hidden=true;
+accountControl.innerHTML='<span id="authAccountEmail"></span><button type="button" id="authSignOut">Sign out</button>';
+document.body.appendChild(accountControl);
+accountControl.querySelector('#authSignOut').addEventListener('click',async()=>{
+  const button=accountControl.querySelector('#authSignOut');button.disabled=true;
+  const {error}=await supabaseClient.auth.signOut();
+  if(error){button.disabled=false;setAuthMessage(error.message,true);authOverlay.hidden=false;return;}
+  button.disabled=false;
+});
+function updateAuthUI(session){
+  currentSession=session||null;
+  const authenticated=Boolean(currentSession);
+  document.body.classList.toggle('auth-required',!authenticated);
+  authOverlay.hidden=authenticated;
+  accountControl.hidden=!authenticated;
+  if(authenticated){
+    accountControl.querySelector('#authAccountEmail').textContent=currentSession.user.email||'';
+    const heading=document.querySelector('.heading');if(heading)heading.textContent='Bonjour Familie Kevers';
+  }
+  if(addButton){addButton.disabled=false;addButton.style.opacity='1';addButton.textContent='＋ Termin hinzufügen';}
+}
+addButton.onclick=()=>{if(!currentSession){authOverlay.hidden=false;return}modal.classList.add('open');};
+supabaseClient.auth.onAuthStateChange((event,session)=>updateAuthUI(session));
+supabaseClient.auth.getSession().then(({data,error})=>{if(error){setAuthMessage(error.message,true);updateAuthUI(null);return;}updateAuthUI(data.session);});
+
 const connection=document.createElement('div'); connection.style='display:none;font-size:12px;color:#7b8985;margin:-18px 0 20px'; connection.textContent='Connexion à l’agenda…'; document.querySelector('.stats').before(connection);
 connection.setAttribute('role','status');connection.textContent='Supabase-Verbindung wird hergestellt …';connection.style.color='#7b8985';
 const modal=document.getElementById('modal');
